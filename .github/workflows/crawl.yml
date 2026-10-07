@@ -1,0 +1,26 @@
+# 하루 2번(한국시간 오전 7시, 오후 7시) 구글 항공편 가격을 받아 prices.json 갱신
+name: 가격 업데이트
+on:
+  schedule:
+    - cron: "0 22,10 * * *"   # UTC 기준 → 한국시간 07:00, 19:00
+  workflow_dispatch:          # Actions 화면에서 "Run workflow" 버튼으로 바로 실행 가능
+permissions:
+  contents: write
+concurrency: crawl
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node crawl.mjs
+      - name: 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prices.json
+          git commit -m "가격 업데이트" || exit 0
+          git push
