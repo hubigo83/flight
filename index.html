@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f6fde">
+<title>가족 항공권 최저가</title>
+<style>
+:root{
+  --bg:#f5f7fa; --card:#fff; --text:#1a1f29; --muted:#6b7380; --line:#e3e7ee;
+  --accent:#0f6fde; --accent-soft:#e6f0fc; --good:#0a8f5b; --warn:#b26a00;
+  --sun:#d92d20; --sat:#1f5fcc; --best:#c92a2a; --hol-bg:#fff6f5;
+  --kr-bg:#fde8e6; --cn-bg:#fff3d6; --cn:#a35a00;
+  --heat0:#ffffff; --heat1:#fff1e0; --heat2:#ffd8a8; --heat3:#ffb366; --heat4:#fd8c2e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11151b; --card:#1a2029; --text:#e8ecf2; --muted:#9aa3b1; --line:#2c3440;
+    --accent:#5aa2ff; --accent-soft:#1d2d44; --good:#4fd39a; --warn:#f0b14a;
+    --sun:#ff6b5e; --sat:#6ea8ff; --best:#e03131; --hol-bg:#2a1e1e;
+    --kr-bg:#4a2422; --cn-bg:#40331a; --cn:#f0b14a;
+    --heat0:#1a2029; --heat1:#3a2a1a; --heat2:#5a3a1a; --heat3:#7a4a18; --heat4:#9a5a14;
+  }
+}
+/* 색상 테마 (눈이 편한 저채도) — 쌀수록 진하게, 최저가는 같은 계열의 가장 진한 색 */
+body[data-pal="sky"]{--heat1:#e1eeff; --heat2:#b9d6ff; --heat3:#8cbcff; --heat4:#5e9ff7; --best:#e8590c; --best2:#ffa94d; --best3:#ffe3c2}
+@media (prefers-color-scheme: dark){
+  body[data-pal="sky"]{--heat1:#1a2a44; --heat2:#1c3560; --heat3:#1f437e; --heat4:#24529c; --best:#d9702c; --best2:#c0703a; --best3:#a86a40}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:16px}
+header{background:var(--accent);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:22px}
+header p{margin:4px 0 0;font-size:14px;opacity:.9}
+main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
+.tabs{display:flex;gap:6px;margin:4px 0 12px}
+.tabs button{flex:1;padding:12px 4px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;font-size:16px;cursor:pointer}
+.tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:20px;cursor:pointer;user-select:none}
+.chip input{margin:0}
+label.small{font-size:15px;color:var(--muted)}
+input[type=date]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font-size:16px}
+.notice{font-size:14px;color:var(--warn);margin:0 0 10px}
+.notice.ok{color:var(--muted)} .notice.ok.old{color:var(--warn);font-weight:700}
+/* 달력 (PC) */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px}
+.cal .dow{font-size:16px;font-weight:700;text-align:center;padding:4px 0;color:var(--text)}
+.cal .dow.sun{color:var(--sun)} .cal .dow.sat{color:var(--sat)}
+.month-title{font-size:24px;font-weight:600;color:var(--text);padding:10px 4px 8px;border-bottom:3px solid var(--accent);margin:8px 0 8px}
+.month-title b{font-size:30px;font-weight:900;color:var(--accent)}
+.month-title.sticky{position:sticky;top:0;z-index:2;background:var(--card);margin:6px 0 2px}
+.cell.out{background:transparent;border:1px dashed var(--line);cursor:default;opacity:.45;min-height:auto}
+.cell{border-radius:8px;padding:8px;cursor:pointer;min-height:130px;border:1px solid var(--line);background:var(--card)}
+.cell.empty{border:none;background:transparent;cursor:default}
+.cell.sel{outline:3px solid var(--accent);outline-offset:-2px}
+.cell.holiday{box-shadow:inset 0 4px 0 var(--sun)}
+.h0{background:var(--heat0)} .h1{background:var(--heat1)} .h2{background:var(--heat2)} .h3{background:var(--heat3)} .h4{background:var(--heat4)}
+.dhead{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:6px}
+.dnum{font-size:21px;font-weight:800;color:var(--text);line-height:1}
+.dnum.sun,.dnum.khol{color:var(--sun)} .dnum.sat{color:var(--sat)}
+.dnum small{font-size:15px;font-weight:700}
+.hol{font-size:12px;padding:2px 6px;border-radius:6px;white-space:nowrap;font-weight:700}
+.hol.kr{background:var(--kr-bg);color:var(--sun)}
+.hol.cn{background:var(--cn-bg);color:var(--cn)}
+.hol.work{background:var(--bg);color:var(--muted)}
+.rank-list{list-style:none;margin:0;padding:0;font-size:14px}
+.rank-list li{display:flex;justify-content:space-between;gap:4px;padding:1px 0;color:var(--text);font-weight:600;white-space:nowrap}
+.rank-list li:first-child{font-weight:800;font-size:17px}
+.rank-list b{font-weight:inherit}
+/* 기간 최저가: 이것만 확실히 튀게 */
+.cell.best{background:var(--best);border-color:var(--best);color:#fff}
+.cell.best .dnum,.cell.best .rank-list li{color:#fff}
+.cell.best2,.mrow.best2{background:var(--best2);border-color:var(--best2)}
+.cell.best3,.mrow.best3{background:var(--best3);border-color:var(--best3)}
+
+.badge-best{font-size:12px;font-weight:800;background:#fff;color:var(--best);padding:2px 7px;border-radius:6px}
+.nodata-t{font-size:13px;color:var(--muted)}
+/* 휴대폰: 날짜별 목록 */
+.mlist{display:none;flex-direction:column;gap:6px}
+.mrow{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:12px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.mrow.holiday{box-shadow:inset 4px 0 0 var(--sun)}
+.mrow.sel{outline:3px solid var(--accent)}
+.mrow .dnum{font-size:21px}
+.mrow .dow-t{font-size:16px;font-weight:700;margin-left:2px}
+.mrow .hols{display:flex;flex-direction:column;gap:3px;margin-top:5px;align-items:flex-start}
+.mrow .rank-list{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;grid-auto-flow:column;column-gap:12px;row-gap:3px;font-size:15px}
+.mrow .rank-list li:first-child{font-size:17px}
+.mrow.best{background:var(--best);border-color:var(--best);color:#fff}
+.mrow.best .dnum,.mrow.best .dow-t,.mrow.best .rank-list li{color:#fff}
+@media (max-width:700px){.cal{display:none}.mlist{display:flex}.month-title{font-size:20px}.month-title b{font-size:26px}}
+.legend{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px;color:var(--muted);margin-top:12px}
+.legend .lg{width:22px;height:14px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+.flist{display:flex;flex-direction:column;gap:8px}
+.flight{display:grid;grid-template-columns:1fr auto;gap:4px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.flight .al{font-weight:700;font-size:16px}
+.flight .meta{font-size:14px;color:var(--muted)}
+.flight .pr{font-size:19px;font-weight:700;text-align:right}
+.tag{font-size:12px;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle}
+.tag.direct{background:var(--accent-soft);color:var(--accent)}
+.tag.lcc{background:#fff1dc;color:#9a5a00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.lcc{background:#3a2c14;color:#f0b14a}}
+.links{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.links a{font-size:15px;padding:8px 12px;border-radius:8px;text-decoration:none;border:1px solid var(--accent);color:var(--accent)}
+.links a.trip{background:var(--accent);color:#fff}
+h2{font-size:19px;margin:4px 0 10px}
+h3{font-size:17px;margin:14px 0 8px}
+.combo{display:grid;grid-template-columns:1fr auto;padding:10px;border:1px solid var(--line);border-radius:10px;gap:4px}
+.combo .sum{font-size:20px;font-weight:700;text-align:right}
+.combo .sub{font-size:14px;color:var(--muted)}
+.rank{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;text-align:center;line-height:22px;margin-right:6px}
+.hidden{display:none}
+footer{font-size:13px;color:var(--muted);text-align:center;padding:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>✈ 가족 항공권 최저가</h1>
+  <p>인천 ⇄ 광저우 · 선전 · 마카오 · 홍콩 편도 비교</p>
+</header>
+<main>
+  <div class="tabs">
+    <button data-tab="toKR" class="on">중국 → 인천</button>
+    <button data-tab="toCN">인천 → 중국</button>
+    <button data-tab="combo">편도 2장 조합</button>
+  </div>
+
+  <p class="notice" id="notice"></p>
+
+  <div class="card">
+    <div class="row" id="airports"></div>
+    <div class="row" style="margin-top:10px">
+      <label class="chip"><input type="checkbox" id="directOnly"> 직항만</label>
+      <label class="chip"><input type="checkbox" id="noLcc"> 수하물 포함 항공사만</label>
+    </div>
+    <div class="row" style="margin-top:10px" id="calCtl">
+      <label class="small">시작일</label>
+      <input type="date" id="startDate">
+    </div>
+    <div class="row hidden" style="margin-top:10px" id="comboCtl">
+      <label class="small">가는 날 (인천 출발)</label><input type="date" id="outDate">
+      <label class="small">오는 날 (인천 도착)</label><input type="date" id="backDate">
+    </div>
+  </div>
+
+  <section id="calView">
+    <div class="card">
+      <h2 id="calTitle"></h2>
+      <div class="cal" id="cal"></div>
+      <div class="mlist" id="mlist"></div>
+      <div class="legend">
+        <span class="badge-best" style="background:var(--best);color:#fff">1위</span><span class="badge-best" style="background:var(--best2);color:#fff">2위</span><span class="badge-best" style="background:var(--best3);color:#fff">3위</span> 기간 중 가장 싼 날 TOP 3 ·
+        싸다 <span class="lg h4"></span><span class="lg h3"></span><span class="lg h2"></span><span class="lg h1"></span><span class="lg h0"></span> 비싸다 ·
+        <span class="hol kr">한 공휴일</span><span class="hol cn">중 공휴일</span><span class="hol work">중 출근일</span>
+        · 칸 안의 순위 = 그날 도시별 최저가
+      </div>
+    </div>
+    <div class="card hidden" id="detail"></div>
+  </section>
+
+  <section id="comboView" class="hidden">
+    <div class="card">
+      <h2>편도 2장 조합 (싼 순서)</h2>
+      <div class="flist" id="combos"></div>
+    </div>
+  </section>
+</main>
+<footer>가격은 참고용입니다. 최종 가격·수하물 규정은 트립닷컴/구글에서 확인 후 예약하세요.</footer>
+
+<script>
+// ---- 설정 ----
+// API_BASE가 비어 있으면 샘플 데이터로 동작. 배포 시 서버(/api)를 붙이면 실제 데이터 사용.
+const API_BASE = window.API_BASE || "";
+
+const CN = [
+  {code:"CAN", name:"광저우"},
+  {code:"SZX", name:"선전"},
+  {code:"MFM", name:"마카오"},
+  {code:"HKG", name:"홍콩"},
+];
+const KR = {code:"ICN", name:"인천"};
+const LCC = new Set(["홍콩익스프레스","제주항공","티웨이항공","진에어","에어부산","Trinity Airways"]);
+
+// 도시 간 이동 (대략적 참고치)
+const TRANSFER = {
+  "CAN-SZX":"고속철 약 30분~1시간", "CAN-HKG":"고속철 약 50분", "CAN-MFM":"고속철 약 1시간 30분(주하이)",
+  "SZX-HKG":"고속철 약 15~20분", "SZX-MFM":"페리 약 1시간", "HKG-MFM":"강주아오대교 버스 약 1시간",
+};
+const transferInfo = (a,b) => TRANSFER[[a,b].sort().join("-")] || "";
+
+// ---- 샘플 데이터 (실제 10/21 조회값 기반으로 만든 가짜 값) ----
+const SAMPLE_AIRLINES = {
+  CAN:[["산둥항공",0,161],["아시아나항공",1,225],["중국남방항공",1,287],["대한항공",1,498]],
+  SZX:[["산둥항공",0,167],["아시아나항공",1,197],["중국남방항공",1,219],["대한항공",1,229],["심천항공",1,229]],
+  MFM:[["제주항공",1,202],["대한항공",1,389],["에어마카오",1,439]],
+  HKG:[["홍콩익스프레스",1,146],["Trinity Airways",1,149],["에어프레미아",1,168],["제주항공",1,182],["아시아나항공",1,286],["대한항공",1,340]],
+};
+function rand(seed){ let h=2166136261; for(const c of seed){h^=c.charCodeAt(0);h=Math.imul(h,16777619);} return ((h>>>0)%10000)/10000; }
+function sampleFlights(from,to,date){
+  const cn = from==="ICN"?to:from;
+  const dow = new Date(date).getDay();
+  const wk = (dow===5||dow===6||dow===0)?1.12:1;
+  return SAMPLE_AIRLINES[cn].map(([al,direct,base],i)=>{
+    const r = rand(from+to+date+al);
+    const h = 1+Math.floor(r*22), m = [0,15,30,45][i%4];
+    const dur = direct? 3.5+r*0.5 : 6+r*6;
+    const arrH = (h+Math.round(dur)+1)%24;
+    return { airline:al, lcc:LCC.has(al), direct:!!direct,
+      dep:`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`,
+      arr:`${String(arrH).padStart(2,"0")}:${String(m).padStart(2,"0")}`,
+      duration: `${Math.floor(dur)}시간 ${Math.round((dur%1)*60)}분`,
+      price: Math.round(base*1000*wk*(0.82+r*0.45)/100)*100 };
+  }).sort((a,b)=>a.price-b.price);
+}
+
+// ---- 데이터 가져오기 ----
+// prices.json (GitHub가 하루 2번 구글 항공편에서 받아 저장) 이 있으면 실제 가격, 없으면 샘플
+let DATA = null;
+async function loadData(){
+  try{ const r = await fetch("prices.json", {cache:"no-cache"}); if(r.ok) DATA = await r.json(); }catch(e){}
+}
+const cache = new Map();
+async function getFlights(from,to,date){
+  const key = `${from}-${to}-${date}`;
+  if(cache.has(key)) return cache.get(key);
+  let res;
+  if(DATA) res = DATA.routes[`${from}-${to}`]?.[date] || [];
+  else if(API_BASE){
+    try{
+      const r = await fetch(`${API_BASE}/api/flights?from=${from}&to=${to}&date=${date}`);
+      res = (await r.json()).flights || [];
+    }catch(e){ res = []; }
+  } else res = sampleFlights(from,to,date);
+  cache.set(key,res);
+  return res;
+}
+function applyFilters(list){
+  return list.filter(f => (!S.directOnly || f.direct) && (!S.noLcc || !f.lcc));
+}
+
+// ---- 외부 링크 ----
+const tripCity = c => ({ICN:"sel",CAN:"can",SZX:"szx",MFM:"mfm",HKG:"hkg"})[c];
+const tripLink = (from,to,date) =>
+  `https://kr.trip.com/flights/showfarefirst?dcity=${tripCity(from)}&acity=${tripCity(to)}&ddate=${date}&dairport=${from.toLowerCase()}&aairport=${to.toLowerCase()}&triptype=ow&class=y&quantity=1&locale=ko-KR&curr=KRW`;
+const googleLink = (from,to,date) =>
+  `https://www.google.com/travel/flights?q=${encodeURIComponent(`one way flights from ${from} to ${to} on ${date}`)}&hl=ko&curr=KRW`;
+
+// ---- 상태 ----
+const today = new Date(); today.setHours(0,0,0,0);
+const fmtDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const won = n => n>=10000 ? (n/10000).toFixed(1).replace(/\.0$/,"")+"만" : n.toLocaleString();
+const wonFull = n => "₩"+n.toLocaleString();
+const nameOf = c => c==="ICN"?"인천":CN.find(x=>x.code===c).name;
+
+const S = (() => {
+  let saved = {};
+  try{ saved = JSON.parse(localStorage.getItem("flightapp")||"{}"); }catch(e){}
+  return Object.assign({
+    tab:"toKR", airports:CN.map(c=>c.code), directOnly:false, noLcc:false,
+    start: fmtDate(addDays(today,1)), out: fmtDate(addDays(today,14)), back: fmtDate(addDays(today,21)), sel:null,
+  }, saved, {sel:null});
+})();
+function save(){ try{ localStorage.setItem("flightapp", JSON.stringify(S)); }catch(e){} }
+
+// ---- 화면 ----
+const $ = id => document.getElementById(id);
+
+function renderControls(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===S.tab));
+  $("airports").innerHTML = '<label class="small">중국 공항</label>' + CN.map(c=>
+    `<label class="chip"><input type="checkbox" value="${c.code}" ${S.airports.includes(c.code)?"checked":""}> ${c.name}</label>`).join("");
+  $("airports").querySelectorAll("input").forEach(i=>i.onchange=()=>{
+    S.airports = [...$("airports").querySelectorAll("input:checked")].map(x=>x.value); update();
+  });
+  document.body.dataset.pal = "sky";
+  $("directOnly").checked=S.directOnly; $("noLcc").checked=S.noLcc;
+  $("startDate").value=S.start; $("outDate").value=S.out; $("backDate").value=S.back;
+  const combo = S.tab==="combo";
+  $("calCtl").classList.toggle("hidden",combo); $("comboCtl").classList.toggle("hidden",!combo);
+  $("calView").classList.toggle("hidden",combo); $("comboView").classList.toggle("hidden",!combo);
+  if(DATA){
+    const u = new Date(DATA.updated);
+    const ago = Math.round((Date.now()-u)/3600e3);
+    $("notice").className = "notice ok" + (ago>26 ? " old" : "");
+    $("notice").textContent = `가격 업데이트: ${u.getMonth()+1}/${u.getDate()} ${String(u.getHours()).padStart(2,"0")}:${String(u.getMinutes()).padStart(2,"0")} (구글 항공편 기준 · 트립닷컴과 몇 천 원 차이 날 수 있어요)`
+      + (ago>26 ? ` ⚠ ${ago}시간 전 가격이에요` : "");
+  } else $("notice").textContent = API_BASE ? "" : "⚠ 지금은 샘플 데이터입니다 (실제 가격 아님). 실제 가격 연결 전 화면 확인용이에요.";
+}
+
+function routes(){ // [from,to] 목록
+  return S.airports.map(c => S.tab==="toKR" ? [c,"ICN"] : ["ICN",c]);
+}
+
+// ---- 공휴일 ----
+// 한국: 법정 공휴일 + 대체공휴일. 중국: 국무원 발표 기준(2026), 2027년은 미발표라 '예상'.
+const HOLIDAYS = {
+  kr: {
+    "2026-10-03":"개천절","2026-10-05":"대체공휴일","2026-10-09":"한글날","2026-12-25":"성탄절",
+    "2027-01-01":"신정","2027-02-06":"설날","2027-02-07":"설날","2027-02-08":"설날","2027-02-09":"대체공휴일",
+    "2027-03-01":"삼일절","2027-05-05":"어린이날","2027-05-13":"부처님오신날","2027-06-06":"현충일",
+    "2027-08-15":"광복절","2027-08-16":"대체공휴일","2027-09-14":"추석","2027-09-15":"추석","2027-09-16":"추석",
+    "2027-10-03":"개천절","2027-10-04":"대체공휴일","2027-10-09":"한글날","2027-10-11":"대체공휴일",
+    "2027-12-25":"성탄절","2027-12-27":"대체공휴일",
+  },
+  cn: {
+    "2026-10-01":"국경절","2026-10-02":"국경절","2026-10-03":"국경절","2026-10-04":"국경절",
+    "2026-10-05":"국경절","2026-10-06":"국경절","2026-10-07":"국경절",
+    "2027-01-01":"원단(예상)","2027-01-02":"원단(예상)","2027-01-03":"원단(예상)",
+    "2027-02-05":"춘절(예상)","2027-02-06":"춘절(예상)","2027-02-07":"춘절(예상)","2027-02-08":"춘절(예상)",
+    "2027-02-09":"춘절(예상)","2027-02-10":"춘절(예상)","2027-02-11":"춘절(예상)","2027-02-12":"춘절(예상)",
+  },
+  cnWork: { "2026-10-10":"출근일" }, // 중국 조정 근무일(토·일인데 출근)
+};
+function holidayInfo(date){
+  const kr = HOLIDAYS.kr[date], cn = HOLIDAYS.cn[date], w = HOLIDAYS.cnWork[date];
+  const tags = [];
+  if(kr) tags.push(`<span class="hol kr">한 ${kr}</span>`);
+  if(cn) tags.push(`<span class="hol cn">중 ${cn}</span>`);
+  if(w) tags.push(`<span class="hol work">중 ${w}</span>`);
+  return { kr:!!kr, any:!!(kr||cn), tags:tags.join("") };
+}
+
+async function renderCalendar(){
+  const start = new Date(S.start);
+  const days = 35;
+  const rs = routes();
+  $("calTitle").textContent = S.tab==="toKR" ? "중국 → 인천 날짜별 최저가" : "인천 → 중국 날짜별 최저가";
+  const cells = [];
+  for(let i=0;i<days;i++){
+    const date = fmtDate(addDays(start,i));
+    const ranking = [];
+    for(const [f,t] of rs){
+      const fl = applyFilters(await getFlights(f,t,date));
+      if(fl.length) ranking.push({price:fl[0].price, city: f==="ICN"?t:f});
+    }
+    ranking.sort((a,b)=>a.price-b.price);
+    cells.push({date,ranking});
+  }
+  const tops = cells.filter(c=>c.ranking.length).map(c=>c.ranking[0].price);
+  const min = Math.min(...tops), max = Math.max(...tops);
+  const top3 = [...new Set(tops)].sort((a,b)=>a-b).slice(0,3); // 기간 최저가 TOP 3
+  // 그날 1위 가격 기준: 쌀수록 진한 오렌지 (h4) → 비쌀수록 흰색 (h0)
+  const heat = c => { if(!c.ranking.length) return "h0"; const r = max===min?0:(c.ranking[0].price-min)/(max-min); return "h"+(4-Math.min(4,Math.floor(r*5))); };
+  const DOW = "일월화수목금토";
+  const rankHtml = r => r.length
+    ? `<ul class="rank-list">${r.map(x=>`<li><span>${nameOf(x.city)}</span><b>${won(x.price)}</b></li>`).join("")}</ul>`
+    : `<div class="nodata-t">${DATA ? "가격 정보 없음" : "항공편 없음"}</div>`;
+  const dayCls = (d,h) => d.getDay()===0 ? "sun" : (h.kr ? "khol" : (d.getDay()===6 ? "sat" : ""));
+
+  const byDate = new Map(cells.map(c=>[c.date,c]));
+  const cellHtml = (c, mobile) => {
+    const d = new Date(c.date), h = holidayInfo(c.date);
+    const top = c.ranking.length ? top3.indexOf(c.ranking[0].price)+1 : 0; // 1~3위면 1~3
+    const badge = top ? `<span class="badge-best">최저가 ${top}위</span>` : "";
+    const cls = `${top===1?"best":top===2?"best2":top===3?"best3":heat(c)} ${h.any?"holiday":""} ${S.sel===c.date?"sel":""}`;
+    if(mobile) return `<div class="mrow ${cls}" data-date="${c.date}">
+      <div><span class="dnum ${dayCls(d,h)}">${d.getDate()}일</span><span class="dow-t dnum ${dayCls(d,h)}">(${DOW[d.getDay()]})</span>
+        <div class="hols">${badge}${h.tags}</div></div>
+      ${rankHtml(c.ranking)}</div>`;
+    return `<div class="cell ${cls}" data-date="${c.date}">
+      <div class="dhead"><span class="dnum ${dayCls(d,h)}">${d.getDate()}</span>${badge}${h.tags}</div>
+      ${rankHtml(c.ranking)}</div>`;
+  };
+  // 달마다 따로: "2026년 10월" 제목 + 1일부터 말일까지 진짜 달력 모양
+  const months = [...new Set(cells.map(c=>c.date.slice(0,7)))];
+  const dowRow = DOW.split("").map((d,i)=>`<div class="dow ${i===0?"sun":i===6?"sat":""}">${d}</div>`).join("");
+  let html = "", mhtml = "";
+  for(const ym of months){
+    const [y,m] = ym.split("-").map(Number);
+    const title = `${y}년 <b>${m}월</b>`;
+    html += `<div class="month-title">${title}</div><div class="cal-grid">${dowRow}`;
+    const first = new Date(y,m-1,1), last = new Date(y,m,0).getDate();
+    for(let i=0;i<first.getDay();i++) html += '<div class="cell empty"></div>';
+    for(let day=1; day<=last; day++){
+      const date = `${ym}-${String(day).padStart(2,"0")}`;
+      const c = byDate.get(date);
+      if(c) html += cellHtml(c,false);
+      else { const dd = new Date(y,m-1,day); html += `<div class="cell out"><span class="dnum ${dayCls(dd,holidayInfo(date))}">${day}</span></div>`; }
+    }
+    html += `</div>`;
+    mhtml += `<div class="month-title sticky">${title}</div>` + cells.filter(c=>c.date.startsWith(ym)).map(c=>cellHtml(c,true)).join("");
+  }
+  $("cal").innerHTML = html;
+  $("mlist").innerHTML = mhtml;
+  document.querySelectorAll("#cal .cell[data-date], #mlist .mrow").forEach(el=>el.onclick=()=>{ S.sel=el.dataset.date; renderCalendar(); renderDetail(); });
+}
+
+function flightHtml(f){
+  return `<div class="flight"><div>
+      <div class="al">${f.airline}${f.direct?'<span class="tag direct">직항</span>':'<span class="tag">경유</span>'}${f.lcc?'<span class="tag lcc">저가·수하물 별도</span>':""}</div>
+      <div class="meta">${f.dep} → ${f.arr} · ${f.duration}</div>
+    </div><div class="pr">${wonFull(f.price)}</div></div>`;
+}
+
+async function renderDetail(){
+  const el = $("detail");
+  if(!S.sel){ el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  const d = new Date(S.sel);
+  let html = `<h2>${d.getMonth()+1}월 ${d.getDate()}일 (${"일월화수목금토"[d.getDay()]}) 항공편</h2>`;
+  const blocks = [];
+  for(const [f,t] of routes()){
+    const fl = applyFilters(await getFlights(f,t,S.sel));
+    blocks.push({f,t,fl,min: fl.length?fl[0].price:Infinity});
+  }
+  blocks.sort((a,b)=>a.min-b.min);
+  for(const b of blocks){
+    html += `<h3>${nameOf(b.f)} → ${nameOf(b.t)} ${b.fl.length?`· 최저 ${wonFull(b.min)}`:""}</h3>`;
+    html += b.fl.length ? `<div class="flist">${b.fl.slice(0,5).map(flightHtml).join("")}</div>` : `<p class="meta">조건에 맞는 항공편 없음</p>`;
+    html += `<div class="links"><a class="trip" href="${tripLink(b.f,b.t,S.sel)}" target="_blank" rel="noopener">트립닷컴에서 보기</a><a href="${googleLink(b.f,b.t,S.sel)}" target="_blank" rel="noopener">구글 항공편에서 보기</a></div>`;
+  }
+  el.innerHTML = html;
+  if(window.innerWidth<700) el.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+async function renderCombos(){
+  const outs=[], backs=[];
+  for(const c of S.airports){
+    const o = applyFilters(await getFlights("ICN",c,S.out));
+    const b = applyFilters(await getFlights(c,"ICN",S.back));
+    if(o.length) outs.push({c,f:o[0]});
+    if(b.length) backs.push({c,f:b[0]});
+  }
+  const list=[];
+  for(const o of outs) for(const b of backs) list.push({o,b,sum:o.f.price+b.f.price});
+  list.sort((a,b)=>a.sum-b.sum);
+  if(!list.length){ $("combos").innerHTML='<p class="meta">조건에 맞는 조합이 없어요.</p>'; return; }
+  $("combos").innerHTML = list.map((x,i)=>{
+    const tr = x.o.c===x.b.c ? "같은 공항 왕복" : `${nameOf(x.o.c)} → ${nameOf(x.b.c)} 이동: ${transferInfo(x.o.c,x.b.c)}`;
+    return `<div class="combo"><div>
+        <div><span class="rank">${i+1}</span><b>인천→${nameOf(x.o.c)}</b> + <b>${nameOf(x.b.c)}→인천</b></div>
+        <div class="sub">가는 편: ${x.o.f.airline} ${x.o.f.dep} · ${wonFull(x.o.f.price)}</div>
+        <div class="sub">오는 편: ${x.b.f.airline} ${x.b.f.dep} · ${wonFull(x.b.f.price)}</div>
+        <div class="sub">🚄 ${tr}</div>
+        <div class="links"><a class="trip" href="${tripLink("ICN",x.o.c,S.out)}" target="_blank" rel="noopener">가는 편 트립닷컴</a><a class="trip" href="${tripLink(x.b.c,"ICN",S.back)}" target="_blank" rel="noopener">오는 편 트립닷컴</a></div>
+      </div><div class="sum">${wonFull(x.sum)}</div></div>`;
+  }).join("");
+}
+
+async function update(){
+  save(); renderControls();
+  if(S.tab==="combo") await renderCombos();
+  else { await renderCalendar(); await renderDetail(); }
+}
+
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.tab; S.sel=null; update(); });
+$("directOnly").onchange=e=>{S.directOnly=e.target.checked; update();};
+$("noLcc").onchange=e=>{S.noLcc=e.target.checked; update();};
+$("startDate").onchange=e=>{S.start=e.target.value; S.sel=null; update();};
+$("outDate").onchange=e=>{S.out=e.target.value; update();};
+$("backDate").onchange=e=>{S.back=e.target.value; update();};
+// 저장된 날짜가 지났으면 내일 기준으로 다시 맞춤
+const tomorrow = fmtDate(addDays(today,1));
+if(S.start < tomorrow) S.start = tomorrow;
+if(S.out < tomorrow) S.out = fmtDate(addDays(today,14));
+if(S.back < S.out) S.back = fmtDate(addDays(new Date(S.out),7));
+loadData().then(update);
+</script>
+</body>
+</html>
